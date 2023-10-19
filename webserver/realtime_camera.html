@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Yakiniku_Detection</title>
+<!--    <script src="js/jquery-1.12.4.min.js"></script>-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <style>
+        body {
+            overflow-y: scroll;
+        }
+        .result-box {
+            display: flex;
+            flex-direction: column;
+            /*background: blue;*/
+        }
+        .title {
+            margin: 1%;
+            flex-direction: row;
+            justify-content: center;
+            text-align: center;
+            width: 98%;
+            /*background: green;*/
+        }
+        .text {
+            margin: 0;
+            /*color: red;*/
+            font-size: 22px;
+            font-family: "Times New Roman";
+        }
+        .result {
+            margin: 1%;
+            width: 98%;
+            /*background: black;*/
+        }
+        .result-img {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <video id="video" style="display: none"></video>
+    <canvas id="canvas" style="display: none"></canvas>
+    <div class="result-box">
+        <div class="title">
+            <p class="text">Detected Video</p>
+        </div>
+        <div id="result" class="result"></div>
+    </div>
+    <script>
+        {#IP = "127.0.0.1"#}
+        {#IP = "172.23.142.148"#}
+        IP =  "172.23.161.221"
+        const width = 480;
+        const height = 800;
+        const video = document.getElementById('video');
+
+        //카메라 access
+        if (
+            navigator.mediaDevices.getUserMedia ||
+            navigator.getUserMedia ||
+            navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia
+        ) {
+            //사용자 카메라 호출
+            getUserMedia({
+                    audio: false,
+                    video: {
+                        width: width,
+                        height: height,
+                        facingMode: isPhone()
+                    }
+                },
+                success,
+                error
+            );
+        } else {
+            alert('access denied');
+        }
+
+        //카메라 access를 위한 호환 방법
+        function getUserMedia(constraints, success, error) {
+            if (navigator.mediaDevices.getUserMedia) {
+                //표준API
+                navigator.mediaDevices.getUserMedia(constraints).then(success).catch(error);
+            } else if (navigator.webkitGetUserMedia) {
+                //webkit 코어 브라우저
+                navigator.webkitGetUserMedia(constraints, success, error);
+            } else if (navigator.mozGetUserMedia) {
+                //firfox 브라우저
+                navigator.mozGetUserMedia(constraints, success, error);
+            } else if (navigator.getUserMedia) {
+                //레거시 API
+                navigator.getUserMedia(constraints, success, error);
+            }
+        }
+
+        function success(stream) {
+            console.log('success');
+            video.srcObject = stream;
+            video.play();
+            setInterval(drawCanvasImage, 500);
+        }
+
+        function error(error) {
+            console.log('failed');
+            console.log('access denied', error);
+        }
+
+        function drawCanvasImage() {
+            const canvas = document.getElementById('canvas');
+            {#canvas.width = width;#}
+            {#canvas.height = height;#}
+            cwidth = video.width;
+            cheight = video.height;
+            canvas.width = cwidth;
+            canvas.height = cheight;
+            const context = canvas.getContext('2d');
+            // console.log(context);
+            {#context.drawImage(video, 0, 0, width, height, 0, 0, width, height);#}
+            context.drawImage(video, 0, 0, cwidth, cheight);
+            // base64형식의 사진 가져오기
+            const imageData = canvas.toDataURL('image/png');
+            // console.log(imageData);
+            showResult(imageData)
+        }
+
+        function showResult(base64_img) {
+            $.ajax({
+                url: "https://" + IP + ":5006/get_img",
+                type: "post",
+                data: {
+                    img: base64_img
+                },
+                success: function (result) {
+                    if (result.code === 200) {
+                        console.log("success!");
+                        // show the base64 image
+                        res = document.getElementById('result');
+                        imgSrc = result.base64_img
+                        var newImg = new Image();
+                        newImg.src = imgSrc;
+                        newImg.className = "result-img";
+                        res.innerHTML = '';
+                        res.appendChild(newImg);
+                    } else {
+                        console.log("failed!");
+                    }
+                }
+            });
+        }
+
+        function isPhone() {
+            var info = navigator.userAgent;
+            var phone = /mobile/i.test(info);
+            console.log(phone);
+            if (phone) {
+                return {exact: "environment"};
+            }
+            return "user";
+        }
+
+    </script>
+</div>
+</body>
+</html>
